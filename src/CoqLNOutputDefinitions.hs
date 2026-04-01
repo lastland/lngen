@@ -17,6 +17,9 @@ module CoqLNOutputDefinitions
 
 import Text.Printf ( printf )
 
+import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty (NonEmpty(..))
+
 import AST
 import ASTAnalysis
 import ComputationMonad
@@ -72,7 +75,7 @@ schemeRecDecl ns _i =
 {- ----------------------------------------------------------------------- -}
 {- * Output for @body@ -}
 
-processBody :: ASTAnalysis -> [NtRoot] -> M String
+processBody :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processBody aaa nt1s =
     do { defs  <- processNt1Nt2Mv2 aaa nt1s f
        ; hints <- processNt1Nt2Mv2 aaa nt1s g
@@ -105,7 +108,7 @@ processBody aaa nt1s =
 
 {- | Generates the text for the @close@ and @close_rec@ functions. -}
 
-processClose :: ASTAnalysis -> [NtRoot] -> M String
+processClose :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processClose aa nts =
     do { s1 <- processCloseRecs aa nts
        ; s2 <- processCloseDefs aa nts
@@ -114,7 +117,7 @@ processClose aa nts =
 
 {- | Generates the text for the definitions of @close@. -}
 
-processCloseDefs :: ASTAnalysis -> [NtRoot] -> M String
+processCloseDefs :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processCloseDefs aaa nt1s =
     do { ss <- processNt1Nt2Mv2 aaa nt1s f
        ; return $ concat $ concat ss
@@ -132,7 +135,7 @@ processCloseDefs aaa nt1s =
 
 {- | Generates the text for the definitions of @close_rec@. -}
 
-processCloseRecs :: ASTAnalysis -> [NtRoot] -> M String
+processCloseRecs :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processCloseRecs aaa nt1s =
     do { ss <- processNt1Nt2Mv2 aaa nt1s f
        ; return $ concat $ map join $ ss
@@ -222,7 +225,7 @@ processCloseRecs aaa nt1s =
 
 {- | Generates the text for the @degree@ predicates. -}
 
-processDegree :: ASTAnalysis -> [NtRoot] -> M String
+processDegree :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processDegree aa nts =
     do { s1 <- processDegreeDefs aa nts
        ; s2 <- processDegreeSchemes aa nts
@@ -232,7 +235,7 @@ processDegree aa nts =
 
 {- | Generates the @Scheme@ declarations for @degree@. -}
 
-processDegreeSchemes :: ASTAnalysis -> [NtRoot] -> M String
+processDegreeSchemes :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processDegreeSchemes aaa nt1s =
     do { ss      <- processNt1Nt2Mv2 aaa nt1s f
        -- ; ssSet   <- processNt1Nt2Mv2 aaa nt1s g
@@ -254,7 +257,7 @@ processDegreeSchemes aaa nt1s =
 
 {- | Generates the @Hint@ declarations for the @degree@ predicates. -}
 
-processDegreeHints :: ASTAnalysis -> [NtRoot] -> M String
+processDegreeHints :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processDegreeHints aaa nt1s =
     do { ss <- processNt1Nt2Mv2 aaa nt1s f
        ; return $ concat $ concat $ ss
@@ -270,7 +273,7 @@ processDegreeHints aaa nt1s =
 
 {- | Generates the text for the @degree@ predicates. -}
 
-processDegreeDefs :: ASTAnalysis -> [NtRoot] -> M String
+processDegreeDefs :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processDegreeDefs aaa nt1s =
     do { ss1 <- processNt1Nt2Mv2 aaa nt1s (f Prop)
        -- ; ss2 <- processNt1Nt2Mv2 aaa nt1s (f Set)
@@ -353,9 +356,9 @@ processDegreeDefs aaa nt1s =
 
 {- | Generates text for the definitions of @lc@. -}
 
-processLc :: ASTAnalysis -> [NtRoot] -> M String
+processLc :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processLc aa nts' =
-    do { let nts = filter (isOpenable aa) nts'
+    do { let nts = filter (isOpenable aa) (NE.toList nts')
        ; (flags, _)   <- get
        ; let suppress x = if nolcset flags then "" else x
        ; defs         <- mapM def nts
@@ -447,10 +450,10 @@ processLc aa nts' =
 
 {- | Generates text for nonterminal declarations. -}
 
-processNt :: ASTAnalysis -> [NtRoot] -> M String
+processNt :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processNt aa nts =
-    do { names     <- mapM (ntType aa) nts
-       ; counts    <- mapM count nts
+    do { names     <- mapM (ntType aa) (NE.toList nts)
+       ; counts    <- mapM count (NE.toList nts)
        ; let n = sum counts
        ; if n > 0 then do {
                           ; schemeInd <- local $ schemeIndDecl names n
@@ -497,13 +500,14 @@ coreNtText aa nt =
 
 {- | Generates the text for the @size@ functions. -}
 
-processSize :: ASTAnalysis -> [NtRoot] -> M String
+processSize :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processSize aa nts =
     do { defsAndBools <- mapM (local . def) nts
-       ; let (defs,bools) = unzip defsAndBools
-       ; if head bools
-         then return $ printf "Fixpoint %s.\n\n" (sepStrings "\n\nwith " defs)
-         else return $ printf "Definition %s.\n\n" (sepStrings "\n\nwith " defs)}
+       ; let defs  = fmap fst defsAndBools
+       ; let bools = fmap snd defsAndBools
+       ; if NE.head bools
+         then return $ printf "Fixpoint %s.\n\n" (sepStrings "\n\nwith " (NE.toList defs))
+         else return $ printf "Definition %s.\n\n" (sepStrings "\n\nwith " (NE.toList defs))}
     where
       def :: NtRoot -> M (String, Bool)
       def nt =
@@ -552,7 +556,7 @@ processSize aa nts =
 
 {- | Generates text for the @swap@ functions. -}
 
-processSwap :: ASTAnalysis -> [NtRoot] -> M String
+processSwap :: ASTAnalysis -> NonEmpty NtRoot -> M String
 processSwap aaa nt1s =
     do { defs <- processNt1 aaa nt1s def
        ; return $ "Fixpoint " ++ (sepStrings "\n\nwith " defs) ++ ".\n\n"

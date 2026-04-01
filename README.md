@@ -22,21 +22,21 @@ Dependencies
 * [GHC](https://www.haskell.org/ghc/)  is  required  in order  to  compile
   LNgen.
   
-  Recently tested with GHC 8.10.7
+  Recently tested with GHC 9.10
 
 * LNgen's output must be combined with the output of
   [Ott](https://github.com/ott-lang/ott). Obtain Ott from opam.
 
 * The Coq Proof assistant.
 
-  This version works with Coq 8.15.0
+  This version works with Coq 8.20
 
 * LNgen's output requires a copy of Penn's metatheory library.  The most
   recent version of the library can be found at
 
     <https://github.com/plclub/metalib/>
 
-  Last tested with the 8.15.0 version of metalib.
+  Last tested with the 8.20 version of metalib.
 
 Building LNgen
 ==============

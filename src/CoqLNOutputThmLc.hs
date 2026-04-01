@@ -6,6 +6,9 @@ module CoqLNOutputThmLc where
 import Data.Maybe  ( catMaybes )
 import Text.Printf ( printf )
 
+import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty (NonEmpty(..))
+
 import AST
 import ASTAnalysis
 import ComputationMonad
@@ -14,7 +17,7 @@ import CoqLNOutputCombinators
 import MyLibrary ( sepStrings )
 import Control.Monad.State (get)
 
-lcThms :: ASTAnalysis -> [[NtRoot]] -> M String
+lcThms :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 lcThms aa nts =
     do { degree_of_lcs     <- mapM (local . degree_of_lc aa) nts
        ; lc_bodys          <- mapM (local . lc_body aa) nts
@@ -47,7 +50,7 @@ lcThms aa nts =
 
 {- | @degree 0 e@ when @lc e@. -}
 
-degree_of_lc :: ASTAnalysis -> [NtRoot] -> M String
+degree_of_lc :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_of_lc aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -89,7 +92,7 @@ degree_of_lc aaa nt1s =
 
       genFreshTacs =
           sequence $
-          do { nt2 <- filter (canBindOver aaa (head nt1s)) (ntRoots aaa)
+          do { nt2 <- filter (canBindOver aaa (NE.head nt1s)) (ntRoots aaa)
              ; mv2 <- mvsOfNt aaa nt2
              ; return $ do { x   <- newName mv2
                            ; return $ printf
@@ -100,7 +103,7 @@ degree_of_lc aaa nt1s =
 
 {- | @lc (open e u)@ when @body e@ and @lc u@. -}
 
-lc_body :: ASTAnalysis -> [NtRoot] -> M String
+lc_body :: ASTAnalysis -> NonEmpty NtRoot -> M String
 lc_body aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -149,9 +152,9 @@ lc_body aaa nt1s =
 
 {- | @body u@ when @lc (C ... u ...)@. -}
 
-lc_body_constr :: ASTAnalysis -> [NtRoot] -> M [String]
+lc_body_constr :: ASTAnalysis -> NonEmpty NtRoot -> M [String]
 lc_body_constr aaa nt1s =
-    sequence $ do { nt1                      <- nt1s
+    sequence $ do { nt1                      <- NE.toList nt1s
                   ; (Syntax _ _ _ cs)          <- [runM [] $ getSyntax aaa nt1]
                   ; c@(SConstr _ _ _ args _) <- [c | c <- cs, hasBindingArg c]
                   ; let nargs = zip args [1..]
@@ -179,9 +182,9 @@ lc_body_constr aaa nt1s =
 
 {- | "Existential" constructors for @lc@. -}
 
-lc_exists :: ASTAnalysis -> [NtRoot] -> M [String]
+lc_exists :: ASTAnalysis -> NonEmpty NtRoot -> M [String]
 lc_exists aaa nt1s =
-    sequence $ do { nt1             <- nt1s
+    sequence $ do { nt1             <- NE.toList nt1s
                   ; (Syntax _ _ _ cs) <- [runM [] $ getSyntax aaa nt1]
                   ; c               <- [c | c <- cs, hasBindingArg c]
                   ; return $ local $ thm aaa nt1 c
@@ -235,9 +238,9 @@ lc_exists aaa nt1s =
 
 {- | Hints for the "existential" constructors for @lc@. -}
 
-lc_exists_hint :: ASTAnalysis -> [NtRoot] -> M [String]
+lc_exists_hint :: ASTAnalysis -> NonEmpty NtRoot -> M [String]
 lc_exists_hint aaa nt1s =
-    sequence $ do { nt1             <- nt1s
+    sequence $ do { nt1             <- NE.toList nt1s
                   ; (Syntax _ _ _ cs) <- [runM [] $ getSyntax aaa nt1]
                   ; c               <- [c | c <- cs, hasBindingArg c]
                   ; return $ local $ thm aaa nt1 c
@@ -273,9 +276,9 @@ lc_exists_hint aaa nt1s =
 
 {- | @lc e@ when @lc_set e@. -}
 
-lc_of_lc_set :: ASTAnalysis -> [NtRoot] -> M String
+lc_of_lc_set :: ASTAnalysis -> NonEmpty NtRoot -> M String
 lc_of_lc_set aaa nt1s =
-    if not (isOpenable aaa (head nt1s))
+    if not (isOpenable aaa (NE.head nt1s))
     then return ""
     else
     do { thms     <- processNt1 aaa nt1s thm
@@ -305,9 +308,9 @@ lc_of_lc_set aaa nt1s =
    to its structure, we need to assemble everything by hand.  Consider
    making \"size induction\" its own combinator, maybe? -}
 
-lc_of_degree :: ASTAnalysis -> [NtRoot] -> M String
+lc_of_degree :: ASTAnalysis -> NonEmpty NtRoot -> M String
 lc_of_degree aaa nt1s =
-    if not (isOpenable aaa (head nt1s))
+    if not (isOpenable aaa (NE.head nt1s))
     then return ""
     else
     do { nt1s' <- -- filterM (fmap not . isPhantomNtRoot aaa)
@@ -354,7 +357,7 @@ lc_of_degree aaa nt1s =
           do { e    <- newName nt1
              ; lc   <- lcName aa nt1
              ; size <- sizeName aa nt1
-             ; hyps <- processNt1Nt2Mv2 aa [nt1] (hyp e)
+             ; hyps <- processNt1Nt2Mv2 aa (nt1 :| []) (hyp e)
              ; return $ printf "forall %s,\n\
                                \  %s %s = %s ->\n\
                                \%s\
@@ -373,7 +376,7 @@ lc_of_degree aaa nt1s =
       gen n aa nt1 =
           do { e    <- newName nt1
              ; lc   <- lcName aa nt1
-             ; hyps <- processNt1Nt2Mv2 aa [nt1] (hyp e)
+             ; hyps <- processNt1Nt2Mv2 aa (nt1 :| []) (hyp e)
              ; size <- sizeName aa nt1
              ; let stmt = printf "forall %s,\n\
                                  \%s\
@@ -395,9 +398,9 @@ lc_of_degree aaa nt1s =
    to its structure, we need to assemble everything by hand.  Consider
    making \"size induction\" its own combinator, maybe? -}
 
-lc_set_of_lc :: ASTAnalysis -> [NtRoot] -> M String
+lc_set_of_lc :: ASTAnalysis -> NonEmpty NtRoot -> M String
 lc_set_of_lc aaa nt1s =
-    if not (isOpenable aaa (head nt1s))
+    if not (isOpenable aaa (NE.head nt1s))
     then return ""
     else
     do { i      <- newName "i"
@@ -408,7 +411,7 @@ lc_set_of_lc aaa nt1s =
        ; lemmas <- mapM (name aaa)
                    (concatMap
                      (\nt -> filter (flip (isSubordTo aaa) nt) (ntRoots aaa))
-                     nt1s)
+                     (NE.toList nt1s))
        ; let mut_name = sepStrings "_" names ++ "_size_mutual"
        ; let mut_stms = printf "forall %s,\n%s" i (sepStrings " *\n" $ map wrap thms)
        ; let proof = printf "intros %s; pattern %s; apply %s;\n\
@@ -485,9 +488,9 @@ lc_set_of_lc aaa nt1s =
 
 {- | @(pf1 pf2 : lc e) -> pf1 = pf2@. -}
 
-lc_unique :: ASTAnalysis -> [NtRoot] -> M String
+lc_unique :: ASTAnalysis -> NonEmpty NtRoot -> M String
 lc_unique aaa nt1s =
-    if not (isOpenable aaa (head nt1s))
+    if not (isOpenable aaa (NE.head nt1s))
     then return ""
     else
     do { pf       <- newName "proof"
@@ -521,7 +524,7 @@ lc_unique aaa nt1s =
 
 {- | Generates tactics for the lc_exists theorems. -}
 
-lc_exists_tactic :: ASTAnalysis -> [NtRoot] -> M String
+lc_exists_tactic :: ASTAnalysis -> NonEmpty NtRoot -> M String
 lc_exists_tactic aaa nt1s =
     do { ls  <- processNt1 aaa nt1s f
        ; tac <- lc_exists_tacticName aaa nt1s
@@ -558,7 +561,7 @@ lc_exists_tactic aaa nt1s =
 
 {- | Generates tactics for the lc_exists theorems. -}
 
-lc_exists_tacticName :: ASTAnalysis -> [NtRoot] -> M String
+lc_exists_tacticName :: ASTAnalysis -> NonEmpty NtRoot -> M String
 lc_exists_tacticName aaa nt1s =
     do { types <- processNt1 aaa nt1s ntType
        ; return $ sepStrings "_" types ++ "_lc_exists_tac"

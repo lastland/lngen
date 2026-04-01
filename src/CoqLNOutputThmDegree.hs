@@ -10,7 +10,9 @@ import ComputationMonad
 import CoqLNOutputCommon
 import CoqLNOutputCombinators
 
-degreeThms :: ASTAnalysis -> [[NtRoot]] -> M String
+import Data.List.NonEmpty (NonEmpty)
+
+degreeThms :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 degreeThms aa nts =
     do { degree_Os             <- mapM (local . degree_O aa) nts
        ; degree_Ss             <- mapM (local . degree_S aa) nts
@@ -41,7 +43,7 @@ degreeThms aa nts =
 
 {- | @degree 0 e@ implies @degree k e@. -}
 
-degree_O :: ASTAnalysis -> [NtRoot] -> M String
+degree_O :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_O aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -69,7 +71,7 @@ degree_O aaa nt1s =
 
 {- | @degree k e@ implies @degree (S k) e@. -}
 
-degree_S :: ASTAnalysis -> [NtRoot] -> M String
+degree_S :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_S aaa nt1s =
     do { thms    <- processNt1Nt2Mv2 aaa nt1s thm
        ; names   <- processNt1Nt2Mv2 aaa nt1s name
@@ -99,7 +101,7 @@ degree_S aaa nt1s =
 
 {- | @degree (S k) (close_rec k x e)@ when @degree k e@. -}
 
-degree_close_rec :: ASTAnalysis -> [NtRoot] -> M String
+degree_close_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_close_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2' aaa nt1s thm
        ; names <- processNt1Nt2Mv2' aaa nt1s name
@@ -145,7 +147,7 @@ degree_close_rec aaa nt1s =
 
 {- | @degree 1 (close x e)@ when @degree 0 e@. -}
 
-degree_close :: ASTAnalysis -> [NtRoot] -> M String
+degree_close :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_close aaa nt1s =
     do { gens  <- processNt1Nt2Mv2' aaa nt1s gen
        ; names <- processNt1Nt2Mv2' aaa nt1s name
@@ -191,7 +193,7 @@ degree_close aaa nt1s =
 
 {- | @degree n e@ when @degree (S n) (close_rec n x e)@. -}
 
-degree_close_inv_rec :: ASTAnalysis -> [NtRoot] -> M String
+degree_close_inv_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_close_inv_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2' aaa nt1s thm
        ; names <- processNt1Nt2Mv2' aaa nt1s name
@@ -238,7 +240,7 @@ degree_close_inv_rec aaa nt1s =
 
 {- | @degree 0 e@ when @degree 1 (close x e)@. -}
 
-degree_close_inv :: ASTAnalysis -> [NtRoot] -> M String
+degree_close_inv :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_close_inv aaa nt1s =
     do { gens  <- processNt1Nt2Mv2' aaa nt1s gen
        ; names <- processNt1Nt2Mv2' aaa nt1s name
@@ -285,7 +287,7 @@ degree_close_inv aaa nt1s =
 {- | @degree n (open_rec n u e)@ when
      @degree n u@ and @degree (S n) e@. -}
 
-degree_open_rec :: ASTAnalysis -> [NtRoot] -> M String
+degree_open_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_open_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2' aaa nt1s thm
        ; names <- processNt1Nt2Mv2' aaa nt1s name
@@ -356,7 +358,7 @@ degree_open_rec aaa nt1s =
 {- | @degree 0 (open e u)@ when
      @degree 0 u@ and @degree 1 e@. -}
 
-degree_open :: ASTAnalysis -> [NtRoot] -> M String
+degree_open :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_open aaa nt1s =
     do { gens  <- processNt1Nt2Mv2' aaa nt1s gen
        ; names <- processNt1Nt2Mv2' aaa nt1s name
@@ -427,7 +429,7 @@ degree_open aaa nt1s =
 
 {- | @degree (S n) e@ when @degree n (open_rec n u e)@. -}
 
-degree_open_inv_rec :: ASTAnalysis -> [NtRoot] -> M String
+degree_open_inv_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_open_inv_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2' aaa nt1s thm
        ; names <- processNt1Nt2Mv2' aaa nt1s name
@@ -476,7 +478,7 @@ degree_open_inv_rec aaa nt1s =
 
 {- | @degree 1 e@ when @degree 0 (open e u)@. -}
 
-degree_open_inv :: ASTAnalysis -> [NtRoot] -> M String
+degree_open_inv :: ASTAnalysis -> NonEmpty NtRoot -> M String
 degree_open_inv aaa nt1s =
     do { gens  <- processNt1Nt2Mv2' aaa nt1s gen
        ; names <- processNt1Nt2Mv2' aaa nt1s name

@@ -11,7 +11,9 @@ import ComputationMonad
 import CoqLNOutputCommon
 import CoqLNOutputCombinators
 
-openCloseThms2 :: ASTAnalysis -> [[NtRoot]] -> M String
+import Data.List.NonEmpty (NonEmpty)
+
+openCloseThms2 :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 openCloseThms2 aa nts =
     do { close_degree_recs <- mapM (local . close_degree_rec aa) nts
        ; close_lcs         <- mapM (local . close_lc aa) nts
@@ -30,7 +32,7 @@ openCloseThms2 aa nts =
 
 {- | @close_rec k x e = e@ when @degree k e@ and @x `notin` fv e@. -}
 
-close_degree_rec :: ASTAnalysis -> [NtRoot] -> M String
+close_degree_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 close_degree_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -64,7 +66,7 @@ close_degree_rec aaa nt1s =
 
 {- | @close x e = e@ when @lc e@ and @x `notin` fv e@. -}
 
-close_lc :: ASTAnalysis -> [NtRoot] -> M String
+close_lc :: ASTAnalysis -> NonEmpty NtRoot -> M String
 close_lc aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -97,7 +99,7 @@ close_lc aaa nt1s =
 
 {- | @open_rec n u e = e@ when @degree n e@. -}
 
-open_degree_rec :: ASTAnalysis -> [NtRoot] -> M String
+open_degree_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 open_degree_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2 aaa nt1s thm
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -129,7 +131,7 @@ open_degree_rec aaa nt1s =
 
 {- | @open u e = e@ when @lc e@. -}
 
-open_lc :: ASTAnalysis -> [NtRoot] -> M String
+open_lc :: ASTAnalysis -> NonEmpty NtRoot -> M String
 open_lc aaa nt1s =
     do { gens     <- processNt1Nt2Mv2 aaa nt1s gen
        ; names    <- processNt1Nt2Mv2 aaa nt1s name

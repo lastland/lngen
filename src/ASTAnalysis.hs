@@ -571,7 +571,9 @@ mvsOfNt aa nt = nmap fst $ filter ((==cnt) . snd) sorts
 
 ntOfMv :: ASTAnalysis -> MvRoot -> NtRoot
 ntOfMv aa mv =
-    head $ nmap (canonRoot aa) $ map snd $ filter ((mv==) . fst) (mvSorts aa)
+    case nmap (canonRoot aa) $ map snd $ filter ((mv==) . fst) (mvSorts aa) of
+      (x:_) -> x
+      []    -> error $ "ntOfMv: metavariable not found: " ++ mv
 
 {- | 'True' if and only if the rule is for a \"phantom\"
    AST. -}

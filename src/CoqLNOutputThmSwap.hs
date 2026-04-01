@@ -10,8 +10,9 @@ import ASTAnalysis
 import ComputationMonad
 import CoqLNOutputCommon
 import CoqLNOutputCombinators
+import Data.List.NonEmpty (NonEmpty)
 
-swapThms :: ASTAnalysis -> [[NtRoot]] -> M String
+swapThms :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 swapThms aa nts =
     do { swap_distribs  <- mapM (swap_distrib aa) nts
        ; swap_instances <- mapM (swap_instance aa) nts
@@ -27,7 +28,7 @@ swapThms aa nts =
 
 {- | @swap ab (swap (c, d)  e) = ...@. -}
 
-swap_distrib :: ASTAnalysis -> [NtRoot] -> M String
+swap_distrib :: ASTAnalysis -> NonEmpty NtRoot -> M String
 swap_distrib aaa nt1s =
     do { thms  <- processNt1 aaa nt1s thm
        ; names <- processNt1 aaa nt1s name
@@ -58,7 +59,7 @@ swap_distrib aaa nt1s =
 
 {- | Theorem: @Swap@ instance declaration. -}
 
-swap_instance :: ASTAnalysis -> [NtRoot] -> M String
+swap_instance :: ASTAnalysis -> NonEmpty NtRoot -> M String
 swap_instance aa nts =
     do { defs <- mapM (local . def) nts
        ; return $ concat defs
@@ -86,7 +87,7 @@ swap_instance aa nts =
 
 {- | @swap ab (swap ab e) = e@. -}
 
-swap_invol :: ASTAnalysis -> [NtRoot] -> M String
+swap_invol :: ASTAnalysis -> NonEmpty NtRoot -> M String
 swap_invol aaa nt1s =
     do { thms  <- processNt1 aaa nt1s thm
        ; names <- processNt1 aaa nt1s name
@@ -113,7 +114,7 @@ swap_invol aaa nt1s =
 
 {- | @swap (a, a) e = e@. -}
 
-swap_same :: ASTAnalysis -> [NtRoot]  -> M String
+swap_same :: ASTAnalysis -> NonEmpty NtRoot -> M String
 swap_same aaa nt1s =
     do { thms  <- processNt1 aaa nt1s thm
        ; names <- processNt1 aaa nt1s name

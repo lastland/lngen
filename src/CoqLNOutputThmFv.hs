@@ -6,13 +6,15 @@ module CoqLNOutputThmFv where
 import Data.Maybe  ( catMaybes )
 import Text.Printf ( printf )
 
+import Data.List.NonEmpty (NonEmpty)
+
 import AST
 import ASTAnalysis
 import ComputationMonad
 import CoqLNOutputCommon
 import CoqLNOutputCombinators
 
-fvThms :: ASTAnalysis -> [[NtRoot]] -> M String
+fvThms :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 fvThms aa nts =
     do { fv_close_recs      <- mapM (local . fv_close_rec aa) nts
        ; fv_closes          <- mapM (local . fv_close aa) nts
@@ -43,12 +45,11 @@ fvThms aa nts =
 
 {- | @fv (close_rec n x e) [=] remove x (fv e)@. -}
 
-fv_close_rec :: ASTAnalysis -> [NtRoot] -> M String
+fv_close_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_close_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
-       ; proofs   <- processNt1Nt2Mv2' aaa nt1s pf
-       ; let proof = map head proofs
+       ; proof    <- processRepNt2Mv2' aaa nt1s pf
        ; mutualLemmaText2 Resolve Rewrite Hide [hintDb] Prop names thms proof
        }
     where
@@ -90,7 +91,7 @@ fv_close_rec aaa nt1s =
 
 {- | @fv (close x e) [=] remove x (fv e)@. -}
 
-fv_close :: ASTAnalysis -> [NtRoot] -> M String
+fv_close :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_close aaa nt1s =
     do { gens     <- processNt1Nt2Mv2' aaa nt1s gen
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -131,12 +132,11 @@ fv_close aaa nt1s =
 
 {- | @fv e [<=] fv (open_rec k e' e)@. -}
 
-fv_open_lower_rec :: ASTAnalysis -> [NtRoot] -> M String
+fv_open_lower_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_open_lower_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
-       ; proofs   <- processNt1Nt2Mv2' aaa nt1s pf
-       ; let proof = map head proofs
+       ; proof    <- processRepNt2Mv2' aaa nt1s pf
        ; mutualLemmaText2 Resolve NoRewrite Hide [hintDb] Prop names thms proof
        }
     where
@@ -166,7 +166,7 @@ fv_open_lower_rec aaa nt1s =
 
 {- | @fv e [<=] fv (open e e')@. -}
 
-fv_open_lower :: ASTAnalysis -> [NtRoot] -> M String
+fv_open_lower :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_open_lower aaa nt1s =
     do { gens     <- processNt1Nt2Mv2' aaa nt1s gen
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -195,12 +195,11 @@ fv_open_lower aaa nt1s =
 
 {- | @fv (open_rec n e' e) [<=] fv e' `union` fv e@. -}
 
-fv_open_upper_rec :: ASTAnalysis -> [NtRoot] -> M String
+fv_open_upper_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_open_upper_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
-       ; proofs   <- processNt1Nt2Mv2' aaa nt1s pf
-       ; let proof = map head proofs
+       ; proof    <- processRepNt2Mv2' aaa nt1s pf
        ; mutualLemmaText2 Resolve NoRewrite Hide [hintDb] Prop names thms proof
        }
     where
@@ -243,7 +242,7 @@ fv_open_upper_rec aaa nt1s =
 
 {- | @fv (open e e') [<=] fv e `union` fv e'@. -}
 
-fv_open_upper :: ASTAnalysis -> [NtRoot] -> M String
+fv_open_upper :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_open_upper aaa nt1s =
     do { gens     <- processNt1Nt2Mv2' aaa nt1s gen
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -287,15 +286,14 @@ fv_open_upper aaa nt1s =
 
 {- | @x `notin` fv e -> fv (subst e' x e) [=] fv e@. -}
 
-fv_subst_fresh :: ASTAnalysis -> [NtRoot] -> M String
+fv_subst_fresh :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_subst_fresh aaa nt1s =
     do { thms'     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names'    <- processNt1Nt2Mv2' aaa nt1s name
-       ; proofs'   <- processNt1Nt2Mv2' aaa nt1s pf
+       ; proofsMb  <- processRepNt2Mv2' aaa nt1s pf
        ; let thms   = filter (not . null) $ map catMaybes thms'
        ; let names  = filter (not . null) $ map catMaybes names'
-       ; let proofs = filter (not . null) $ map catMaybes proofs'
-       ; let proof  = map head proofs
+       ; let proof  = catMaybes proofsMb
        ; mutualLemmaText2 Resolve Rewrite NoHide [hintDb] Prop names thms proof
        }
     where
@@ -345,12 +343,11 @@ fv_subst_fresh aaa nt1s =
 
 {- | @remove x (fv e) [<=] fv (subst e' x e)@. -}
 
-fv_subst_lower :: ASTAnalysis -> [NtRoot] -> M String
+fv_subst_lower :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_subst_lower aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
-       ; proofs   <- processNt1Nt2Mv2' aaa nt1s pf
-       ; let proof = map head proofs
+       ; proof    <- processRepNt2Mv2' aaa nt1s pf
        ; mutualLemmaText2 Resolve NoRewrite NoHide [hintDb] Prop names thms proof
        }
     where
@@ -393,12 +390,11 @@ fv_subst_lower aaa nt1s =
 {- | @x `notin` fv (subst u y e)@ when
      @x `notin` fv u@ and @x `notin` fv e@. -}
 
-fv_subst_notin :: ASTAnalysis -> [NtRoot] -> M String
+fv_subst_notin :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_subst_notin aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
-       ; proofs   <- processNt1Nt2Mv2' aaa nt1s pf
-       ; let proof = map head proofs
+       ; proof    <- processRepNt2Mv2' aaa nt1s pf
        ; mutualLemmaText2 Resolve NoRewrite NoHide [hintDb] Prop names thms proof
        }
     where
@@ -438,12 +434,11 @@ fv_subst_notin aaa nt1s =
 
 {- | @fv (subst e' x e) [<=] fv e' `union` remove x (fv e)@. -}
 
-fv_subst_upper :: ASTAnalysis -> [NtRoot] -> M String
+fv_subst_upper :: ASTAnalysis -> NonEmpty NtRoot -> M String
 fv_subst_upper aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
-       ; proofs   <- processNt1Nt2Mv2' aaa nt1s pf
-       ; let proof = map head proofs
+       ; proof    <- processRepNt2Mv2' aaa nt1s pf
        ; mutualLemmaText2 Resolve NoRewrite NoHide [hintDb] Prop names thms proof
        }
     where

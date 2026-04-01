@@ -10,8 +10,9 @@ import ASTAnalysis
 import ComputationMonad
 import CoqLNOutputCommon
 import CoqLNOutputCombinators
+import Data.List.NonEmpty (NonEmpty)
 
-openCloseThms :: ASTAnalysis -> [[NtRoot]] -> M String
+openCloseThms :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 openCloseThms aa nts =
     do { close_inj_recs  <- mapM (local . close_inj_rec aa) nts
        ; close_injs      <- mapM (local . close_inj aa) nts
@@ -38,7 +39,7 @@ openCloseThms aa nts =
 
 {- | @close_rec k x e1 = close_rec k x e2@ implies @e1 = e2@. -}
 
-close_inj_rec :: ASTAnalysis -> [NtRoot] -> M String
+close_inj_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 close_inj_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -72,7 +73,7 @@ close_inj_rec aaa nt1s =
 
 {- | @close x e1 = close x e2@ implies @e1 = e2@. -}
 
-close_inj :: ASTAnalysis -> [NtRoot] -> M String
+close_inj :: ASTAnalysis -> NonEmpty NtRoot -> M String
 close_inj aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -101,7 +102,7 @@ close_inj aaa nt1s =
 
 {- | @close_rec k x (open_rec k x e) = e@ when @x `notin` fv e@. -}
 
-close_open_rec :: ASTAnalysis -> [NtRoot] -> M String
+close_open_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 close_open_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -134,7 +135,7 @@ close_open_rec aaa nt1s =
 
 {- | @close x (open x e) = e@ when @x `notin` fv e@. -}
 
-close_open :: ASTAnalysis -> [NtRoot] -> M String
+close_open :: ASTAnalysis -> NonEmpty NtRoot -> M String
 close_open aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -167,7 +168,7 @@ close_open aaa nt1s =
 
 {- | @open_rec k x (close_rec k x e) = e@ -}
 
-open_close_rec :: ASTAnalysis -> [NtRoot] -> M String
+open_close_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 open_close_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2 aaa nt1s thm
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -198,7 +199,7 @@ open_close_rec aaa nt1s =
 
 {- | @open x (close x e) = e@ -}
 
-open_close :: ASTAnalysis -> [NtRoot] -> M String
+open_close :: ASTAnalysis -> NonEmpty NtRoot -> M String
 open_close aaa nt1s =
     do { gens     <- processNt1Nt2Mv2 aaa nt1s gen
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -230,7 +231,7 @@ open_close aaa nt1s =
 {- | @open_rec k x e1 = open_rec k x e2@ implies @e1 = e2@ when
      @x `notin` fv e1 `union` fv e2@. -}
 
-open_inj_rec :: ASTAnalysis -> [NtRoot] -> M String
+open_inj_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 open_inj_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -271,7 +272,7 @@ open_inj_rec aaa nt1s =
 {- | @open e1 x = open e2 x@ implies @e1 = e2@ when
      @x `notin` fv e1 `union` fv e2@. -}
 
-open_inj :: ASTAnalysis -> [NtRoot] -> M String
+open_inj :: ASTAnalysis -> NonEmpty NtRoot -> M String
 open_inj aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name

@@ -16,14 +16,11 @@ jobs:
       matrix:
         resolver:
           - nightly
+          - lts-24
+          - lts-23
           - lts-22
           - lts-21
           - lts-20
-          - lts-19
-          - lts-18
-          - lts-17
-          - lts-16
-          - lts-15
     steps:
       - uses: actions/checkout@v4
       - uses: haskell-actions/setup@latest

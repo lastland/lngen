@@ -9,7 +9,9 @@ import ComputationMonad
 import CoqLNOutputCommon
 import CoqLNOutputCombinators
 
-sizeThms :: ASTAnalysis -> [[NtRoot]] -> M String
+import Data.List.NonEmpty (NonEmpty)
+
+sizeThms :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 sizeThms aa nts =
     do { size_close_recs    <- mapM (local . size_close_rec aa) nts
        ; size_closes        <- mapM (local . size_close aa) nts
@@ -34,7 +36,7 @@ sizeThms aa nts =
 
 {- | @size (close_rec n x e) = size e@. -}
 
-size_close_rec :: ASTAnalysis -> [NtRoot] -> M String
+size_close_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 size_close_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -62,7 +64,7 @@ size_close_rec aaa nt1s =
 
 {- | @size (close e x) = size e@. -}
 
-size_close :: ASTAnalysis -> [NtRoot] -> M String
+size_close :: ASTAnalysis -> NonEmpty NtRoot -> M String
 size_close aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -89,7 +91,7 @@ size_close aaa nt1s =
 
 {- | @1 <= size e@. -}
 
-size_min :: ASTAnalysis -> [NtRoot] -> M String
+size_min :: ASTAnalysis -> NonEmpty NtRoot -> M String
 size_min aaa nt1s =
     do { thms  <- processNt1 aaa nt1s thm
        ; names <- processNt1 aaa nt1s name
@@ -111,7 +113,7 @@ size_min aaa nt1s =
 
 {- | @size e <= size (open_rec n e' e)@. -}
 
-size_open_rec :: ASTAnalysis -> [NtRoot] -> M String
+size_open_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 size_open_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -140,7 +142,7 @@ size_open_rec aaa nt1s =
 
 {- | @size e <= size (open e e')@. -}
 
-size_open :: ASTAnalysis -> [NtRoot] -> M String
+size_open :: ASTAnalysis -> NonEmpty NtRoot -> M String
 size_open aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -169,7 +171,7 @@ size_open aaa nt1s =
 
 {- | @size (open_rec n (var x) e) = size e@. -}
 
-size_open_var_rec :: ASTAnalysis -> [NtRoot] -> M String
+size_open_var_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 size_open_var_rec aaa nt1s =
     do { thms  <- processNt1Nt2Mv2 aaa nt1s thm
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -200,7 +202,7 @@ size_open_var_rec aaa nt1s =
 
 {- | @size (open e (var x)) = size e@. -}
 
-size_open_var :: ASTAnalysis -> [NtRoot] -> M String
+size_open_var :: ASTAnalysis -> NonEmpty NtRoot -> M String
 size_open_var aaa nt1s =
     do { gens     <- processNt1Nt2Mv2 aaa nt1s gen
        ; names    <- processNt1Nt2Mv2 aaa nt1s name

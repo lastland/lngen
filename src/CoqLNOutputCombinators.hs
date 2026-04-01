@@ -7,6 +7,9 @@ module CoqLNOutputCombinators where
 import Control.Monad.State
 import Text.Printf ( printf )
 
+import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty (NonEmpty(..))
+
 import AST
 import ASTAnalysis
 import ComputationMonad
@@ -160,22 +163,22 @@ mutPfStart s ns = f (case s of { Prop -> mutIndName ; Set -> mutRecName })
 {- Combinator used to loop over a set of @nt1s@. -}
 
 processNt1 :: ASTAnalysis
-           -> [NtRoot]
+           -> NonEmpty NtRoot
            -> (ASTAnalysis -> NtRoot -> M a)
            -> M [a]
-processNt1 aa nt1s f = mapM (local . f aa) nt1s
+processNt1 aa nt1s f = mapM (local . f aa) (NE.toList nt1s)
 
 {- Combinator used to loop over @(nt1, nt2, mv2)@ triples. -}
 
 processNt1Nt2Mv2 :: ASTAnalysis
-                 -> [NtRoot]
+                 -> NonEmpty NtRoot
                  -> (ASTAnalysis -> NtRoot -> NtRoot -> MvRoot -> M a)
                  -> M [[a]]
 processNt1Nt2Mv2 aa nt1s f =
     sequence $
-    do { nt2 <- filter (canBindOver aa (head nt1s)) (ntRoots aa)
+    do { nt2 <- filter (canBindOver aa (NE.head nt1s)) (ntRoots aa)
        ; mv2 <- mvsOfNt aa nt2
-       ; return $ sequence $ do { nt1 <- nt1s
+       ; return $ sequence $ do { nt1 <- NE.toList nt1s
                                 ; return (local $ f aa nt1 nt2 mv2)
                                 }
        }
@@ -183,16 +186,35 @@ processNt1Nt2Mv2 aa nt1s f =
 {- Combinator used to loop over @(nt1, nt2, mv2, nt2', mv2')@ tuples. -}
 
 processNt1Nt2Mv2' :: ASTAnalysis
-                  -> [NtRoot]
+                  -> NonEmpty NtRoot
                   -> (ASTAnalysis -> NtRoot -> NtRoot -> MvRoot -> NtRoot -> MvRoot -> M a)
                   -> M [[a]]
 processNt1Nt2Mv2' aa nt1s f =
     sequence $
-    do { nt2  <- filter (canBindOver aa (head nt1s)) (ntRoots aa)
+    do { nt2  <- filter (canBindOver aa (NE.head nt1s)) (ntRoots aa)
        ; mv2  <- mvsOfNt aa nt2
-       ; nt2' <- filter (canBindOver aa (head nt1s)) (ntRoots aa)
+       ; nt2' <- filter (canBindOver aa (NE.head nt1s)) (ntRoots aa)
        ; mv2' <- mvsOfNt aa nt2'
-       ; return $ sequence $ do { nt1 <- nt1s
+       ; return $ sequence $ do { nt1 <- NE.toList nt1s
                                 ; return (local $ f aa nt1 nt2 mv2 nt2' mv2')
                                 }
        }
+
+{- Combinator used to loop over @(nt2, mv2, nt2', mv2')@ tuples,
+   running the function only on the representative (first) element of
+   @nt1s@.  Useful when the function produces the same result for all
+   elements in the same SCC. -}
+
+processRepNt2Mv2' :: ASTAnalysis
+                  -> NonEmpty NtRoot
+                  -> (ASTAnalysis -> NtRoot -> NtRoot -> MvRoot -> NtRoot -> MvRoot -> M a)
+                  -> M [a]
+processRepNt2Mv2' aa nt1s f =
+    let nt1 = NE.head nt1s in
+    sequence
+    [ local $ f aa nt1 nt2 mv2 nt2' mv2'
+    | nt2  <- filter (canBindOver aa nt1) (ntRoots aa)
+    , mv2  <- mvsOfNt aa nt2
+    , nt2' <- filter (canBindOver aa nt1) (ntRoots aa)
+    , mv2' <- mvsOfNt aa nt2'
+    ]

@@ -7,6 +7,9 @@
 module CoqLNOutput ( coqOfAST ) where
 
 import Data.Graph    ( SCC(..), stronglyConnComp )
+import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty (NonEmpty(..))
+import Data.Maybe    ( mapMaybe )
 import Text.Printf   ( printf )
 
 import AST
@@ -36,8 +39,8 @@ import Control.Monad.State (get)
 
 coqOfAST :: Maybe String -> Maybe String -> AST -> M String
 coqOfAST ott loadpath ast =
-    do { nts'       <- filter (not . null) <$>
-                       mapM (local . filterM (notPhantomNtRoot aa)) nts
+    do { nts'       <- fmap (mapMaybe NE.nonEmpty) $
+                       mapM (\nt -> local $ filterM (notPhantomNtRoot aa) (NE.toList nt)) nts
        ; (flags, _)   <- get
        ; let suppress x = if noclose flags then "" else x
        ; bodyStrs   <- mapM (local . processBody aa) nts'
@@ -121,8 +124,9 @@ coqOfAST ott loadpath ast =
                                    defaultAutoRewr
        }
     where
-      fixSCC (AcyclicSCC n) = [canon n]
-      fixSCC (CyclicSCC ns) = nmap canon ns
+      fixSCC (AcyclicSCC n)      = canon n :| []
+      fixSCC (CyclicSCC (n:ns)) = NE.nub $ fmap canon (n :| ns)
+      fixSCC (CyclicSCC [])     = error "fixSCC: impossible empty CyclicSCC"
       aa    = analyzeAST ast
       canon = canonRoot aa
       nts   = reverse $ nmap fixSCC $ stronglyConnComp $ ntGraph aa

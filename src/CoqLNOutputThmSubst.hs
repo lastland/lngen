@@ -6,6 +6,9 @@ module CoqLNOutputThmSubst where
 import Data.Maybe  ( catMaybes )
 import Text.Printf ( printf )
 
+import qualified Data.List.NonEmpty as NE
+import Data.List.NonEmpty (NonEmpty(..))
+
 import AST
 import ASTAnalysis
 import ComputationMonad
@@ -13,7 +16,7 @@ import CoqLNOutputCommon
 import CoqLNOutputCombinators
 import MyLibrary ( sepStrings )
 
-substThms :: ASTAnalysis -> [[NtRoot]] -> M String
+substThms :: ASTAnalysis -> [NonEmpty NtRoot] -> M String
 substThms aa nts =
     do { subst_close_recs      <- mapM (local . subst_close_rec aa) nts
        ; subst_closes          <- mapM (local . subst_close aa) nts
@@ -61,7 +64,7 @@ substThms aa nts =
 {- | @subxt u x (close_rec k y e) = close_rec k y (subst u x e)@
      when @x <> y@ and @y `notin` fv u@ and @degree k u@. -}
 
-subst_close_rec :: ASTAnalysis -> [NtRoot] -> M String
+subst_close_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_close_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -113,7 +116,7 @@ subst_close_rec aaa nt1s =
 {- | @subxt u x (close y e) = close y (subst u x e)@
      when @x <> y@ and @y `notin` fv u@ and @lc u@. -}
 
-subst_close :: ASTAnalysis -> [NtRoot] -> M String
+subst_close :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_close aaa nt1s =
     do { gens     <- processNt1Nt2Mv2' aaa nt1s gen
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -160,7 +163,7 @@ subst_close aaa nt1s =
 {- | @subst u x e@ = @close_rec k z (subst u x (open_rec k (var z) e))@
      when @z `notin` fv u `union` fv e `union` { x }@ and @degree k u@. -}
 
-subst_close_open_rec :: ASTAnalysis -> [NtRoot] -> M String
+subst_close_open_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_close_open_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -218,7 +221,7 @@ subst_close_open_rec aaa nt1s =
 {- | @subst u x e@ = @close_rec k z (subst u x (open_rec k (var z) e))@
      when @z `notin` fv u `union` fv e `union` { x }@ and @lc u@. -}
 
-subst_close_open :: ASTAnalysis -> [NtRoot] -> M String
+subst_close_open :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_close_open aaa nt1s =
     do { gens     <- processNt1Nt2Mv2' aaa nt1s gen
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -274,9 +277,9 @@ subst_close_open aaa nt1s =
 
 {- | How @subst@ commutes with binding constructors. -}
 
-subst_constr :: ASTAnalysis -> [NtRoot] -> M [String]
+subst_constr :: ASTAnalysis -> NonEmpty NtRoot -> M [String]
 subst_constr aaa nt1s =
-    sequence $ do { nt1             <- nt1s
+    sequence $ do { nt1             <- NE.toList nt1s
                   ; nt2             <- filter (canBindOver aaa nt1) (ntRoots aaa)
                   ; mv2             <- mvsOfNt aaa nt2
                   ; (Syntax _ _ _ cs) <- [runM [] $ getSyntax aaa nt1]
@@ -371,7 +374,7 @@ subst_constr aaa nt1s =
 
 {- | @degree n (subst u x e)@ when @degree n u@ and @degree n e@. -}
 
-subst_degree :: ASTAnalysis -> [NtRoot] -> M String
+subst_degree :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_degree aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -421,7 +424,7 @@ subst_degree aaa nt1s =
 
 {- | @subst u x e = e@ when @x `notin` fv e@. -}
 
-subst_fresh_eq :: ASTAnalysis -> [NtRoot] -> M String
+subst_fresh_eq :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_fresh_eq aaa nt1s =
     do { thms     <- processNt1Nt2Mv2 aaa nt1s thm
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -451,7 +454,7 @@ subst_fresh_eq aaa nt1s =
 
 {- | @x `notin` subst u x e@ when @x `notin` fv u@. -}
 
-subst_fresh_same :: ASTAnalysis -> [NtRoot] -> M String
+subst_fresh_same :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_fresh_same aaa nt1s =
     do { thms     <- processNt1Nt2Mv2 aaa nt1s thm
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -482,7 +485,7 @@ subst_fresh_same aaa nt1s =
 
 {- | @x `notin` subst u y e@ when @x `notin` fv u `union` fv e@. -}
 
-subst_fresh :: ASTAnalysis -> [NtRoot] -> M String
+subst_fresh :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_fresh aaa nt1s =
     do { thms     <- processNt1Nt2Mv2 aaa nt1s thm
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -516,7 +519,7 @@ subst_fresh aaa nt1s =
 
 {- | @open_rec k u e = subst u x (open_rec k x e)@ when @x `notin` fv e@. -}
 
-subst_intro_rec :: ASTAnalysis -> [NtRoot] -> M String
+subst_intro_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_intro_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2 aaa nt1s thm
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -550,7 +553,7 @@ subst_intro_rec aaa nt1s =
 
 {- | @open_rec k u e = subst u x (open_rec e x)@ when @x `notin` fv e@. -}
 
-subst_intro :: ASTAnalysis -> [NtRoot] -> M String
+subst_intro :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_intro aaa nt1s =
     do { gens  <- processNt1Nt2Mv2 aaa nt1s gen
        ; names <- processNt1Nt2Mv2 aaa nt1s name
@@ -583,7 +586,7 @@ subst_intro aaa nt1s =
 
 {- | @lc (subst u x e)@ when @lc u@ and @lc e@. -}
 
-subst_lc :: ASTAnalysis -> [NtRoot] -> M String
+subst_lc :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_lc aaa nt1s =
     do { gens     <- processNt1Nt2Mv2 aaa nt1s gen
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -618,7 +621,7 @@ subst_lc aaa nt1s =
 {- | @subst u x (open_rec n v e) = open_rec n (subst u x v) (subst u x e)@
      when @lc u@. -}
 
-subst_open_rec :: ASTAnalysis -> [NtRoot] -> M String
+subst_open_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_open_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -677,7 +680,7 @@ subst_open_rec aaa nt1s =
 {- | @subst u x (open e v) = open (subst u x e) (subst u x v)@
      when @lc u@. -}
 
-subst_open :: ASTAnalysis -> [NtRoot] -> M String
+subst_open :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_open aaa nt1s =
     do { gens     <- processNt1Nt2Mv2' aaa nt1s gen
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -738,7 +741,7 @@ subst_open aaa nt1s =
 {- | @subst u x (open e (var y)) = open (subst u x e) (var y)@
       when @lc u@ and @x <> y@. -}
 
-subst_open_var :: ASTAnalysis -> [NtRoot] -> M String
+subst_open_var :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_open_var aaa nt1s =
     do { gens     <- processNt1Nt2Mv2' aaa nt1s gen
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
@@ -784,7 +787,7 @@ subst_open_var aaa nt1s =
 
 {- | @subst e2 x e1 = open_rec k e2 (close_rec k x e1)@. -}
 
-subst_spec_rec :: ASTAnalysis -> [NtRoot] -> M String
+subst_spec_rec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_spec_rec aaa nt1s =
     do { thms     <- processNt1Nt2Mv2 aaa nt1s thm
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -814,7 +817,7 @@ subst_spec_rec aaa nt1s =
 
 {- | @subst e2 x e1 = open (close x e1) e2@. -}
 
-subst_spec :: ASTAnalysis -> [NtRoot] -> M String
+subst_spec :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_spec aaa nt1s =
     do { gens     <- processNt1Nt2Mv2 aaa nt1s gen
        ; names    <- processNt1Nt2Mv2 aaa nt1s name
@@ -849,7 +852,7 @@ subst_spec aaa nt1s =
      Implementation note (BEA): The case analysis in the function is
      somewhat intense.  Maybe there's a simpler way? -}
 
-subst_subst :: ASTAnalysis -> [NtRoot] -> M String
+subst_subst :: ASTAnalysis -> NonEmpty NtRoot -> M String
 subst_subst aaa nt1s =
     do { thms     <- processNt1Nt2Mv2' aaa nt1s thm
        ; names    <- processNt1Nt2Mv2' aaa nt1s name
